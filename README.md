@@ -151,6 +151,10 @@ RunningHub 每次合成约需数十秒并扣点（实测 7 个字约 39 秒、5.
 
 没有任何密钥时，可以先用 `python tests/mock_services.py --port 9100` 模拟 LLM / TTS / 识别体验整条链路。所有环境变量、配置文件字段、各后端（含 Confucius4-R2T2 GPU 服务、faster-whisper 模型大小、自建 IndexTTS）的部署步骤、表情映射规则和常见问题，见 **[语音对话：本地部署与使用指南](docs/VOICE_CHAT.md)**。
 
+### 下一步：B站 AI 虚拟主播（计划）
+
+后续计划把流明做成在 B站直播间读弹幕、回答问题、带表情和身体动作的 AI 虚拟主播，全部组件在本机运行（blivedm / 开放平台弹幕、Ollama 或 vLLM 本地大模型、CosyVoice / 自部署 IndexTTS 2.5 流式语音、OBS 同机推流）。调研、架构、目录规划、分阶段 TODO 与验收标准、硬件要求和合规注意事项见 **[B站 AI 虚拟主播：本地部署调研与开发计划](docs/LIVE_VTUBER_PLAN.md)**。
+
 ## 当前阶段
 
 LumenAct 仍处于持续补充表演素材、训练与评估的早期阶段。受当前素材覆盖范围影响，初期版本在部分输入下可能呈现接近 Motion Matching（动作匹配）的观感：相近的情绪描述容易呈现相似的表演，细微语义差异和自由组合的表现还有提升空间。

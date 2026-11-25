@@ -130,6 +130,7 @@
     "preview/voice-chat.js",
     "preview/voice-text.js",
     "docs/VOICE_CHAT.md",
+    "docs/LIVE_VTUBER_PLAN.md",
     "tests/test_voice.py",
     "tests/voice.test.mjs",
     "tests/mock_services.py",
