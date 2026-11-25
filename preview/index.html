@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>流明 · Living Expression</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e34a39'/%3E%3Cpath d='M7 7h5v5H7zm7 0h5v5h-5zm7 0h5v5h-5zM7 14h5v5H7zm7 0h5v5h-5zm7 0h5v5h-5zM7 21h5v5H7zm7 0h5v5h-5zm7 0h5v5h-5z' fill='%23fff3e6'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./preview.css?v=workbench-3">
+  <link rel="stylesheet" href="./preview.css?v=voice-chat-1">
 </head>
 <body>
 <div class="app">
@@ -17,7 +17,7 @@
   <main class="layout">
     <section class="panel stage-panel">
       <div class="panel-head"><div><h2>流明 / LIVE EXPRESSION</h2><div class="model-badge"><i></i><span id="faceStatus">正在加载脸部参考…</span></div></div><span class="status"><i class="dot"></i><span>LOCAL PREVIEW</span></span></div>
-      <div id="preview" class="viewport" aria-label="流明实时三维面部预览"></div>
+      <div class="stage-wrap"><div id="preview" class="viewport" aria-label="流明实时三维面部预览"></div><div id="caption" class="caption" aria-live="polite" hidden><span class="caption-said"></span><span class="caption-rest"></span></div></div>
       <div class="stage-foot"><div><strong id="currentExpression">自然放松</strong></div><div class="stage-actions"><button class="btn" data-view="front">正面</button><button class="btn" data-view="left">左侧</button><button class="btn" data-view="right">右侧</button><button class="btn" id="resetView">回正</button></div></div>
     </section>
     <aside class="side">
@@ -44,16 +44,20 @@
       <section class="panel chat">
         <div class="panel-head"><h2>和流明聊聊 <span>/ DIALOGUE</span></h2><span id="semanticStatus" class="pill">本地模型预热中</span></div>
         <div id="messages" class="chat-body" aria-live="polite"><div class="bubble"><small>LUMEN / READY</small>你好，我在。想聊点什么？</div></div>
-        <form id="chatForm" class="composer"><input id="chatInput" required placeholder="配置 LLM 后输入一句话"><button class="btn primary" id="sendChat">发送 ↗</button></form>
+        <form id="chatForm" class="composer"><input id="chatInput" required placeholder="配置 LLM 后输入一句话，或点麦克风说话"><button class="btn primary" id="sendChat">发送 ↗</button></form>
+        <div class="voice-bar"><button type="button" class="btn mic" id="micButton" aria-pressed="false">🎙 语音对话</button><span class="mic-level"><i id="micLevel"></i></span><span id="voiceStatus" class="voice-status">点击麦克风开始说话</span><label class="voice-toggle"><input id="autoListen" type="checkbox">连续对话</label></div>
         <details class="promo-raw"><summary>高层原文 / DIRECTOR TRACE</summary><pre id="rawAnswer">尚无回复</pre></details>
       </section>
     </aside>
   </main>
   <details class="services panel"><summary><strong>LLM / TTS 配置</strong><span class="muted">接口可选，密钥由用户自行管理</span><span>展开设置 ↗</span></summary>
-    <form id="serviceForm" class="settings"><label>LLM Endpoint<input id="llmEndpoint" type="url" placeholder="https://example.com/v1/chat/completions"></label><label>LLM Model<input id="llmModel" placeholder="模型名称"></label><label>LLM API Key<input id="llmKey" type="password"></label><label>TTS Endpoint<input id="ttsEndpoint" type="url" placeholder="https://example.com/v1/audio/speech"></label><label>TTS Model<input id="ttsModel"></label><label>TTS Voice<input id="ttsVoice"></label><label>TTS API Key<input id="ttsKey" type="password"></label><div class="check-options"><label><input id="ttsEnabled" type="checkbox">启用 TTS</label><label><input id="rememberKeys" type="checkbox">保存密钥</label></div><button id="saveServices" type="button" class="btn">保存配置</button></form>
+    <form id="serviceForm" class="settings"><label>LLM Endpoint<input id="llmEndpoint" type="url" placeholder="https://example.com/v1/chat/completions"></label><label>LLM Model<input id="llmModel" placeholder="模型名称"></label><label>LLM API Key<input id="llmKey" type="password"></label><label>TTS Endpoint<input id="ttsEndpoint" type="url" placeholder="https://example.com/v1/audio/speech"></label><label>TTS Model<input id="ttsModel"></label><label>TTS Voice<input id="ttsVoice"></label><label>TTS API Key<input id="ttsKey" type="password"></label><div class="check-options"><label><input id="ttsEnabled" type="checkbox" checked>启用 TTS</label><label><input id="rememberKeys" type="checkbox">保存密钥</label></div><button id="saveServices" type="button" class="btn">保存配置</button></form>
+  </details>
+  <details class="services panel"><summary><strong>语音对话配置</strong><span class="muted">ASR 识别 · TTS 后端 · 口型与字幕；服务端环境变量中的密钥不会发到网页</span><span>展开设置 ↗</span></summary>
+    <form id="voiceForm" class="settings"><label>ASR 后端<select id="asrBackend"><option value="browser">浏览器 Web Speech</option><option value="r2t2">Confucius4-R2T2 流式（本地服务）</option><option value="openai">OpenAI 兼容 Whisper（云端）</option><option value="local">faster-whisper（本机）</option></select></label><label>识别语言<input id="asrLanguage" placeholder="zh"></label><label>R2T2 WebSocket<input id="r2t2Url" placeholder="ws://127.0.0.1:8272/asr_stream_api_v1"></label><label>R2T2 secret_key<input id="r2t2Secret" placeholder="test0102"></label><label>R2T2 热词 / 上下文<input id="r2t2Hotwords" placeholder="流明, LumenAct"></label><label>ASR Endpoint<input id="asrEndpoint" type="url" placeholder="https://example.com/v1/audio/transcriptions"></label><label>ASR Model<input id="asrModel" placeholder="whisper-1 / small"></label><label>ASR API Key<input id="asrKey" type="password"></label><label>TTS 后端<select id="ttsBackend"><option value="runninghub">IndexTTS 2.5 · RunningHub</option><option value="indextts-local">IndexTTS 本地 / 自建 HTTP</option><option value="openai">OpenAI 兼容云端 TTS</option><option value="browser">浏览器朗读</option><option value="off">不朗读（只显示字幕）</option></select></label><div class="check-options"><label><input id="ttsFallback" type="checkbox" checked>失败时浏览器朗读</label><label><input id="lipSync" type="checkbox" checked>口型</label><label><input id="listenReaction" type="checkbox" checked>倾听反应</label><label><input id="captions" type="checkbox" checked>字幕</label></div><span id="voiceServerInfo" class="muted voice-info"></span><button id="saveVoice" type="button" class="btn">保存语音配置</button></form>
   </details>
   <footer><span>OPEN EXPRESSION / COMMUNITY BUILT</span><span>FACE REFERENCE · BLENDER ADAPTATION · LOCAL SHOWCASE</span></footer>
 </div>
-<script type="module" src="./app.js?v=face-directives-10"></script>
+<script type="module" src="./app.js?v=voice-chat-1"></script>
 </body>
 </html>

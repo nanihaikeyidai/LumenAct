@@ -10,7 +10,8 @@
     "basic camera gaze, head idle and neutral playback with crossfades",
     "user-configured LLM/TTS adapters",
     "public reference prompt and independent left/right brow controls",
-    "verified public asset downloader and allowlisted release builder"
+    "verified public asset downloader and allowlisted release builder",
+    "voice dialogue: pluggable ASR (Web Speech / Confucius4-R2T2 / Whisper), TTS (IndexTTS 2.5 RunningHub / self-hosted / OpenAI-compatible / browser), emotion tags, captions and amplitude lip sync"
   ],
   "excluded": [
     "source project code",
@@ -120,7 +121,20 @@
     "docs/ADAPTING_YOUR_MODEL.md",
     "licenses/Apache-2.0.txt",
     "licenses/CC-BY-4.0.txt",
-    "licenses/CC-BY-NC-4.0.txt"
+    "licenses/CC-BY-NC-4.0.txt",
+    "voice_services.py",
+    "requirements-voice.txt",
+    "services.example.json",
+    ".env.example",
+    "preview/emotion-map.js",
+    "preview/voice-chat.js",
+    "preview/voice-text.js",
+    "docs/VOICE_CHAT.md",
+    "tests/test_voice.py",
+    "tests/voice.test.mjs",
+    "tests/mock_services.py",
+    "tests/mock_r2t2.py",
+    "tools/indextts_http_server.py"
   ],
   "runtime": "independent reference renderer with basic camera gaze, head idle, linear curve sampling and neutral return crossfades",
   "distribution_status": "GitHub source published; Hugging Face resources publicly released; Blender shape-key reference included; archives not rebuilt",

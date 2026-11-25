@@ -11,6 +11,7 @@ from urllib.request import ProxyHandler, Request, build_opener, urlopen
 import webbrowser
 
 from download_assets import asset_issues, load_manifest
+import voice_services
 
 ROOT = Path(__file__).resolve().parent
 
@@ -128,7 +129,8 @@ def forward_service(body, speech=False):
         raise RuntimeError("无法连接到配置的服务，请检查地址与服务状态") from exc
 
 
-def handler_type(semantic, service_defaults=None):
+def handler_type(semantic, service_defaults=None, voice=None):
+    voice = voice or voice_services.VoiceConfig()
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -152,7 +154,9 @@ def handler_type(semantic, service_defaults=None):
                 self.send_json(200, {"ready": semantic.ready, "error": semantic.error,
                                      "model": semantic.config["name"], "device": "CPU"})
             elif path == "/api/services/config":
-                self.send_json(200, service_defaults or {})
+                defaults = voice.public()
+                defaults.update({key: value for key, value in (service_defaults or {}).items() if value != ""})
+                self.send_json(200, defaults)
             elif path == "/":
                 self.send_response(302)
                 self.send_header("Location", "/preview/")
@@ -168,21 +172,29 @@ def handler_type(semantic, service_defaults=None):
                 self.send_json(403, {"error": "只接受当前本地预览页的请求"})
                 return
             try:
+                path = urlsplit(self.path).path
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 0 < length <= 256 * 1024:
-                    raise ValueError("请求体为空或超过 256KB")
+                # 录音上传需要更大的请求体；其余接口保持 256KB 上限。
+                limit = 24 * 1024 * 1024 if path == "/api/services/transcribe" else 256 * 1024
+                if not 0 < length <= limit:
+                    raise ValueError("请求体为空或超过 " + ("24MB" if limit > 256 * 1024 else "256KB"))
                 body = json.loads(self.rfile.read(length))
                 if not isinstance(body, dict):
                     raise ValueError("请求体必须是 JSON 对象")
-                path = urlsplit(self.path).path
                 if path == "/api/semantic":
                     intent, text = str(body.get("intent", "")).strip(), str(body.get("text", ""))
                     if not intent:
                         raise ValueError("请输入情绪描述")
                     self.send_json(200, semantic.predict(intent[:2000], text[:4000]))
-                elif path in ("/api/services/chat", "/api/services/speech"):
-                    content, kind = forward_service(body, speech=path.endswith("/speech"))
+                elif path == "/api/services/chat":
+                    content, kind = forward_service(voice.fill_service(body, "llm"))
                     self.send_bytes(200, content, kind)
+                elif path == "/api/services/speech":
+                    # backend: runninghub / indextts-local / openai（缺省，兼容旧请求）
+                    content, kind = voice_services.synthesize(voice, body)
+                    self.send_bytes(200, content, kind)
+                elif path == "/api/services/transcribe":
+                    self.send_json(200, voice_services.transcribe(voice, body))
                 else:
                     self.send_json(404, {"error": "没有这个接口"})
             except (ValueError, KeyError, TypeError) as exc:
@@ -219,15 +231,25 @@ def main():
                 service_defaults[name] = profile[name]
         if isinstance(profile.get("ttsEnabled"), bool):
             service_defaults["ttsEnabled"] = profile["ttsEnabled"]
+        for name in ("ttsBackend", "asrBackend", "asrEndpoint", "asrModel", "asrLanguage"):
+            if isinstance(profile.get(name), str):
+                service_defaults[name] = profile[name]
+        for name in ("autoListen", "lipSync", "listenReaction", "captions"):
+            if isinstance(profile.get(name), bool):
+                service_defaults[name] = profile[name]
+    else:
+        profile = {}
+    voice = voice_services.VoiceConfig(profile)
     semantic = SemanticModel()
     try:
         server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                     handler_type(semantic, service_defaults))
+                                     handler_type(semantic, service_defaults, voice))
     except OSError as exc:
         raise SystemExit(f"端口 {args.port} 不可用，可使用 --port 指定其他端口。") from exc
     threading.Thread(target=semantic.warmup, daemon=True).start()
     url = f"http://127.0.0.1:{args.port}/preview/"
     print("LumenAct reference preview:", url, flush=True)
+    print("语音对话 TTS 默认后端:", voice.tts_backend, "| ASR 默认后端:", voice.asr_backend, flush=True)
     if not args.no_browser:
         webbrowser.open(url)
     try:

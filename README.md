@@ -86,6 +86,16 @@ python download_assets.py --repo AaBbcoder/LumenAct --revision df8126a2a85473522
 
 下载器只使用 Python 标准库，会校验大小和 SHA-256，跳过完整文件；下载失败不会覆盖原文件。`python download_assets.py --check` 可在离线状态检查资源完整性。
 
+## 语音对话
+
+预览器支持和流明直接语音对话，并根据对话内容切换表情：**麦克风识别 → LLM 回复（带表情标签）→ TTS 朗读与字幕 → 开口时切换表情、口型随音量开合 → 说完回到自然放松**；用户说话时流明会先做出共情反应。
+
+- **ASR**：浏览器 Web Speech（默认）、[Confucius4-R2T2](https://github.com/netease-youdao/Confucius4-R2T2) 稳定前缀流式识别（本地 GPU 服务，推荐）、OpenAI 兼容 Whisper、本机 faster-whisper。
+- **TTS**：IndexTTS 2.5（RunningHub 工作流，参考音色克隆）、本地 / 自建 IndexTTS HTTP、OpenAI 兼容云端 TTS、浏览器朗读。
+- **表情**：优先使用 LLM 给出的标签，其次本地语义模型，最后按台词关键词兜底。
+
+启动方式不变，展开页面底部“语音对话配置”选择后端后点 🎙 即可。环境变量示例见 `.env.example`，完整说明（部署 Confucius4-R2T2、RunningHub 费用与延迟、表情映射规则、测试方法）见 [docs/VOICE_CHAT.md](docs/VOICE_CHAT.md)。
+
 ## 当前阶段
 
 LumenAct 仍处于持续补充表演素材、训练与评估的早期阶段。受当前素材覆盖范围影响，初期版本在部分输入下可能呈现接近 Motion Matching（动作匹配）的观感：相近的情绪描述容易呈现相似的表演，细微语义差异和自由组合的表现还有提升空间。

@@ -1,0 +1,4 @@
+# 可选：本机 faster-whisper 语音识别（ASR 后端 local）。浏览器识别、Confucius4-R2T2、云端 Whisper 都不需要它。
+faster-whisper>=1.1,<2
+# faster-whisper 1.2 与 PyAV 16+ 不兼容（open() 不接受 metadata_errors）。
+av>=11,<16
