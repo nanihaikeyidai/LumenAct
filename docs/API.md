@@ -54,7 +54,7 @@ speech 可加 `"backend"`：`runninghub`（IndexTTS 2.5 RunningHub 工作流）�
 
 `GET /api/services/config` 返回非密钥默认值、`ttsBackend` / `asrBackend`，以及 `serverKeys`（各服务是否已在服务端配置密钥，不含密钥本身）。网页请求未填 Endpoint / Key 时使用服务端环境变量 `LUMENACT_LLM_*`、`LUMENACT_TTS_*`、`LUMENACT_ASR_*`；服务端密钥只发往同名 Endpoint。
 
-chat 返回服务商 JSON；speech 返回服务商音频。服务端不保存这些请求，不自带任何账号或服务器配置。
+chat 返回服务商 JSON；speech 返回服务商音频。环境变量与各后端部署见 [语音对话指南](VOICE_CHAT.md)。服务端不保存这些请求，不自带任何账号或服务器配置。
 
 ## 网页控制
 

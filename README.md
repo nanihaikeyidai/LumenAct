@@ -88,13 +88,68 @@ python download_assets.py --repo AaBbcoder/LumenAct --revision df8126a2a85473522
 
 ## 语音对话
 
-预览器支持和流明直接语音对话，并根据对话内容切换表情：**麦克风识别 → LLM 回复（带表情标签）→ TTS 朗读与字幕 → 开口时切换表情、口型随音量开合 → 说完回到自然放松**；用户说话时流明会先做出共情反应。
+预览器可以和流明直接语音对话，并根据对话内容切换表情：**麦克风识别 → LLM 回复（带表情标签）→ TTS 朗读与字幕 → 开口时切换表情、口型随音量开合 → 说完回到自然放松**；用户说话时，流明会先做出共情反应。
 
-- **ASR**：浏览器 Web Speech（默认）、[Confucius4-R2T2](https://github.com/netease-youdao/Confucius4-R2T2) 稳定前缀流式识别（本地 GPU 服务，推荐）、OpenAI 兼容 Whisper、本机 faster-whisper。
-- **TTS**：IndexTTS 2.5（RunningHub 工作流，参考音色克隆）、本地 / 自建 IndexTTS HTTP、OpenAI 兼容云端 TTS、浏览器朗读。
-- **表情**：优先使用 LLM 给出的标签，其次本地语义模型，最后按台词关键词兜底。
+| 环节 | 可选后端 |
+| --- | --- |
+| 语音识别（ASR） | 浏览器 Web Speech（默认，零配置）· [Confucius4-R2T2](https://github.com/netease-youdao/Confucius4-R2T2) 稳定前缀流式识别（本地 NVIDIA GPU 服务）· OpenAI 兼容 Whisper · 本机 faster-whisper |
+| 语音合成（TTS） | IndexTTS 2.5（RunningHub 工作流，参考音色克隆）· 本机 / 自建 IndexTTS HTTP · OpenAI 兼容云端 TTS · 浏览器朗读 |
+| 表情 | LLM 给出的标签 → 本地语义模型 → 台词关键词兜底 → 自然放松 |
 
-启动方式不变，展开页面底部“语音对话配置”选择后端后点 🎙 即可。环境变量示例见 `.env.example`，完整说明（部署 Confucius4-R2T2、RunningHub 费用与延迟、表情映射规则、测试方法）见 [docs/VOICE_CHAT.md](docs/VOICE_CHAT.md)。
+### 快速开始（本地部署）
+
+需要 Python 3.10+ 和桌面版 Chrome / Edge。
+
+**macOS / Linux**
+
+```sh
+git clone https://github.com/nanihaikeyidai/LumenAct.git
+cd LumenAct
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-voice.txt   # 可选：本机 faster-whisper 识别
+python download_assets.py                         # 从 Hugging Face AaBbcoder/LumenAct 下载并校验模型资源
+export LUMENACT_LLM_ENDPOINT=https://你的服务/v1/chat/completions
+export LUMENACT_LLM_MODEL=你的模型
+export LUMENACT_LLM_KEY=你的Key                    # 也可以不设，直接在网页里填写
+python server.py
+```
+
+**Windows PowerShell**
+
+```powershell
+git clone https://github.com/nanihaikeyidai/LumenAct.git
+cd LumenAct
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-voice.txt   # 可选
+python download_assets.py
+$env:LUMENACT_LLM_ENDPOINT = "https://你的服务/v1/chat/completions"
+$env:LUMENACT_LLM_MODEL = "你的模型"
+$env:LUMENACT_LLM_KEY = "你的Key"
+python server.py
+```
+
+> 语音对话功能合并前位于 `feat/voice-chat-emotion` 分支，克隆时加 `-b feat/voice-chat-emotion`。使用虚拟环境时请用 `python server.py` 启动；`start_preview.bat` 使用系统 Python，不会用到 `.venv` 中安装的依赖。
+
+浏览器打开 <http://127.0.0.1:8766/preview/>（麦克风只在 localhost 或 HTTPS 下可用，不要用局域网 IP），然后：
+
+1. 展开底部 **语音对话配置**，选择 ASR 后端和 TTS 后端，点“保存语音配置”。
+2. 点聊天区的 **🎙 语音对话**，允许麦克风权限后说话；停顿约 0.9 秒自动结束。
+3. 勾选 **连续对话** 可以一轮接一轮地聊；流明说话时再点 🎙 可以打断。
+
+想用自己的声音朗读（IndexTTS 2.5 · RunningHub），启动前再设置：
+
+```sh
+export RUNNINGHUB_API_KEY=你的RunningHub密钥
+export LUMENACT_INDEXTTS_REF=/path/to/your-voice.wav
+```
+
+RunningHub 每次合成约需数十秒并扣点（实测 7 个字约 39 秒、5.27 点），结果会缓存在 `voice-cache/`。
+
+没有任何密钥时，可以先用 `python tests/mock_services.py --port 9100` 模拟 LLM / TTS / 识别体验整条链路。所有环境变量、配置文件字段、各后端（含 Confucius4-R2T2 GPU 服务、faster-whisper 模型大小、自建 IndexTTS）的部署步骤、表情映射规则和常见问题，见 **[语音对话：本地部署与使用指南](docs/VOICE_CHAT.md)**。
 
 ## 当前阶段
 
