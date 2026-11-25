@@ -242,6 +242,15 @@ LumenAct 仍处于持续补充表演素材、训练与评估的早期阶段。�
 
 本包只公开独立脸部展示资产、语义权重、表演曲线和基础页面代码。主项目的面捕映射、视线跟随、口型分层、自然放松、动作图、惯性过渡、微动调度和骨骼求解没有随包发布。详细范围见 [docs/BOUNDARIES.md](docs/BOUNDARIES.md)。
 
+## 本 fork 补充的直播与角色素材
+
+本仓库在上游参考脸之外，还放了直播场景和全身角色模型，方便本地继续开发虚拟直播：
+
+- 直播场景（星空书房背景与透明前景）：[assets/live-scene/](assets/live-scene/)，引用说明见 [素材声明](assets/live-scene/ASSET_NOTICE.md)
+- 角色设定图与当前采用的 Tripo 全身模型：[assets/character/](assets/character/)，引用说明见 [素材声明](assets/character/ASSET_NOTICE.md)
+
+Tripo 模型已转换为 VRM 1.0（`assets/character/tripo/lumen-tripo.vrm`），可作全身直播角色使用，但还没有表情形态键，不能直接驱动 LumenAct 的 112 个表情通道。总索引见 [assets/README.md](assets/README.md)。
+
 ## 许可证
 
 本项目按内容分别授权：
