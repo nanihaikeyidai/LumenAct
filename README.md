@@ -268,3 +268,7 @@ Tripo 模型已转换为 VRM 1.0（`assets/character/tripo/lumen-tripo.vrm`）�
 
 授权范围、署名方式和上游核对状态见 [模型及数据声明](models/ASSET_NOTICE.md) 与 [参考脸声明](assets/reference-face/ASSET_NOTICE.md)。完整标准许可文本放在 `licenses/`。本授权不扩展到完整流明角色、项目标识或未发布的主工程，也不取代第三方原有许可。
 
+
+### Tripo 文字直播
+
+[本地直播间启动与测试](docs/TRIPO_LIVE.md) 支持 IndexTTS 2.5 参考音色、文字动作和音频口型。

@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>流明直播间</title><style>
+*{box-sizing:border-box}body{margin:0;background:#101722;color:#eef2fc;font:16px system-ui}main{max-width:1000px;margin:auto;padding:20px}h1{font-size:24px}.stage{position:relative;aspect-ratio:16/9;background:#28313f;border-radius:12px;overflow:hidden}canvas{width:100%;height:100%;display:block}form{display:flex;gap:10px;margin:14px 0}input,button{padding:12px;border:0;border-radius:8px;font:inherit}input{flex:1;min-width:0}button{cursor:pointer}#status{color:#bdccde}small{display:block;line-height:1.6}</style>
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+<main><h1>流明直播间</h1><div class="stage"><canvas></canvas></div><form><input aria-label="直播台词" required maxlength="500" value="（挥手，微笑）大家好，欢迎来到今天的直播。"><button disabled id="play">播报</button><button type="button" id="stop">停止</button></form><small>可在句首写（挥手，微笑）、（点头）、（讲解，挑眉）、（摇头）或（眨眼）。连续提交会依次播报。</small><p id="status" role="status">正在加载角色…</p></main><script type="module" src="./live.js"></script></html>
