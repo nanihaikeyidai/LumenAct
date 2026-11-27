@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("audio", type=Path, help="Mono 16-bit PCM narration")
 parser.add_argument("frames", type=Path)
 parser.add_argument("--refine-face", action="store_true")
+parser.add_argument("--model-dir", type=Path, help="Directory for the generated Blender and GLB files")
 parser.add_argument("--stills", action="store_true")
 args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 args.frames.mkdir(parents=True, exist_ok=True)
@@ -30,6 +31,53 @@ mouth_x, mouth_z = .027, .7255
 world = face.matrix_world.copy()
 local = world.inverted()
 head_index = face.vertex_groups["Head"].index
+def cast_surface(x, z):
+    found, p, _, _ = face.ray_cast(local @ Vector((x, -1, z)), local.to_3x3() @ Vector((0, 1, 0)))
+    if not found:
+        raise RuntimeError(f"Unable to find lip surface at {x}, {z}")
+    return (world @ p).y
+
+def rebuild_lip_surface():
+    # Fit a smooth cheek surface around the sunken Tripo mouth. Work in world
+    # coordinates so the rebuild is independent of the FBX object scale.
+    def terms(u, v):
+        return (1, u, v, u*u, u*v, v*v)
+
+    fit, depth_samples = [], []
+    for ring in (1.05, 1.35):
+        for angle in np.linspace(0, math.tau, 48, endpoint=False):
+            u, v = ring*math.cos(angle), ring*math.sin(angle)
+            fit.append(terms(u, v))
+            depth_samples.append(cast_surface(mouth_x+.023*u, mouth_z+.017*v))
+    coeff = np.linalg.lstsq(fit, depth_samples, rcond=None)[0]
+    changes = []
+    for vertex in face.data.vertices:
+        point = world @ basis.data[vertex.index].co
+        u, v = (point.x-mouth_x)/.023, (point.z-mouth_z)/.017
+        radius = math.hypot(u,v)
+        if radius >= 1 or point.y > -.06:
+            continue
+        if point.y > cast_surface(point.x, point.z)+.0035:
+            continue
+        fitted = float(np.dot(terms(u,v), coeff))
+        lip_profile = math.exp(-((point.x-mouth_x)/.0105)**4)
+        upper = math.exp(-((point.z-mouth_z-.0018)/.0026)**2)
+        lower = math.exp(-((point.z-mouth_z+.0025)/.0031)**2)
+        lip_relief = lip_profile*(.00060*upper+.00085*lower)
+        blend = (1-radius*radius)**1.65
+        offset = min(0, max(-.0034, fitted-lip_relief-point.y))*blend
+        changes.append((vertex.index, local.to_3x3() @ Vector((0,offset,0))))
+    if not changes:
+        raise RuntimeError("No vertices found for the lip surface rebuild")
+    for index, delta in changes:
+        for key in keys:
+            key.data[index].co += delta
+        face.data.vertices[index].co += delta
+    face.data.update()
+    bpy.context.view_layer.update()
+    print("Rebuilt mouth surface vertices:", len(changes), flush=True)
+
+rebuild_lip_surface()
 for vertex in face.data.vertices:
     i = vertex.index
     point = world @ basis.data[i].co
@@ -44,7 +92,7 @@ for vertex in face.data.vertices:
         blend = math.exp(-.5*((dx/.015)**2 + ((dz+.012)/.015)**2))
         # Only tuck the lower lip and chin slightly down.
         lower = min(1, max(0, -dz/.009))
-        mouth.data[i].co = local @ (point + Vector((0, .0007*blend*lower, -.007*blend*lower)))
+        mouth.data[i].co = local @ (point + Vector((0, -.00045*blend*lower, -.007*blend*lower)))
     if .750 < z < .803:
         for eye_x in (-.019, .079):
             u, v = (x-eye_x)/.032, (z-.774)/.027
@@ -68,6 +116,8 @@ def refine_skin():
     uv = face.data.uv_layers.active.data
     mask = np.zeros((height,width), np.float32)
     edge_mask = np.zeros_like(mask)
+    lip_mask = np.zeros_like(mask)
+    lip_line = np.zeros_like(mask)
     coords = np.array([tuple(world @ v.co) for v in face.data.vertices])
     for poly in face.data.polygons:
         pos = coords[list(poly.vertices)]
@@ -96,8 +146,14 @@ def refine_skin():
         def band(cx,cy,rx,ry,slope):
             return np.clip((1-((sx-cx)/rx)**4-((sy-cy-slope*(sx-cx))/ry)**4)*1.5,0,1)
         coverage=np.maximum.reduce([band(286,344,45,9,.17),band(474,339,43,10,-.13),
-                                    band(506,406,13,15,-.95)])
+                                    band(508,407,9,21,-1.25),band(516,394,6,12,-1.55)])
         edge_mask[yy[inside],xx[inside]]=coverage[inside]
+        u=(sx-376)/23
+        lip_y=468 + .7*u - 1.6*(1-u*u)
+        repair=np.exp(-2*u*u-((sy-lip_y)/5.7)**2)
+        line=np.exp(-((sy-lip_y)/.9)**2)*np.clip(1-1.9*u*u,0,1)
+        lip_mask[yy[inside],xx[inside]]=repair[inside]
+        lip_line[yy[inside],xx[inside]]=line[inside]
 
     y,x=np.where(mask>0)
     rgb=pixels[y,x,:3].copy()
@@ -116,6 +172,16 @@ def refine_skin():
     skin_base=np.array([.77,.59,.49])
     cleaned=filtered+(skin_base-filtered)*.38
     pixels[y,x,:3]+=weight[:,None]*(cleaned-pixels[y,x,:3])
+    # Replace the baked dark wedge with a feathered, fine line at rest.
+    lip_color = np.array([.79,.61,.51])
+    seam_color = np.array([.39,.21,.16])
+    seam = lip_line[y,x,None]
+    target = np.maximum(lip_color, filtered)
+    target += seam*(seam_color-target)*.55
+    lip_weight = lip_mask[y,x]*np.clip((r-b+.02)/.075,0,1)
+    lift = np.clip((.79-r)/.19,0,1)
+    lip_weight *= np.maximum(lift, seam[:,0]*.42)
+    pixels[y,x,:3] += lip_weight[:,None]*(target-pixels[y,x,:3])
     image.pixels.foreach_set(pixels.ravel())
     image.update()
     image.pack()
@@ -124,12 +190,6 @@ def refine_skin():
 
 if args.refine_face:
     refine_skin()
-
-def cast_surface(x, z):
-    found, p, _, _ = face.ray_cast(local @ Vector((x, -1, z)), local.to_3x3() @ Vector((0, 1, 0)))
-    if not found:
-        raise RuntimeError(f"Unable to find lip surface at {x}, {z}")
-    return (world @ p).y
 
 def mouth_material(name, rgb):
     mat = bpy.data.materials.new(name)
@@ -151,11 +211,11 @@ for row in range(rows + 1):
         u = 2 * col / cols - 1
         arch = max(.008, 1-u*u)
         x = mouth_x + .0118*u
-        seam = mouth_z + .0010*u + .0013*arch
+        seam = mouth_z + .0004*u + .0014*arch
         z = seam + .0014*arch - .0115*arch**.8*v
         depth = cast_surface(x, z)
-        closed.append((mouth_x+.009*u, cast_surface(mouth_x+.009*u,seam)+.00035, seam))
-        opened.append((x, depth-.0018-.00045*abs(2*v-1), z))
+        closed.append((mouth_x+.009*u, cast_surface(mouth_x+.009*u,seam)+.0025, seam))
+        opened.append((x, depth-.0023-.0004*abs(2*v-1), z))
         # A soft tongue highlight tapers out before reaching either mouth corner.
         tongue = math.exp(-((v-.84)/.23)**2-(u/.65)**4)
         shade = .75 + .25*arch
@@ -255,7 +315,8 @@ if args.stills:
 for key in keys:
     key.value = 0
 source = Path(bpy.data.filepath)
-output = source.with_name("lumen-tripo-face-refined" if args.refine_face else "lumen-tripo-speech-v2")
+output = (args.model_dir or source.parent) / ("lumen-tripo-face-refined" if args.refine_face else "lumen-tripo-speech-v2")
+output.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=str(output.with_suffix(".blend")))
 rig.select_set(True)
 bpy.ops.export_scene.gltf(filepath=str(output.with_suffix(".glb")), export_format="GLB",
